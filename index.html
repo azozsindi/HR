@@ -7,102 +7,168 @@
   
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f5f5f7; direction: rtl; }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif; 
+      background: #f5f5f7; 
+      direction: rtl; 
+      overflow-x: hidden;
+    }
     #root { width: 100%; min-height: 100vh; }
-    .status-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; text-align: center; padding: 20px; }
-    .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    .error { color: #c00; background: #fee; padding: 30px; border-radius: 12px; max-width: 700px; border: 2px solid #fcc; }
-    .error h2 { margin-bottom: 15px; }
-    .error-details { margin-top: 20px; font-size: 13px; text-align: right; line-height: 1.8; background: #fff; padding: 15px; border-radius: 8px; }
+    
+    .status-screen { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
+      min-height: 100vh; 
+      text-align: center; 
+      padding: 20px; 
+    }
+    
+    .spinner { 
+      width: 50px; 
+      height: 50px; 
+      border: 5px solid #f3f3f3; 
+      border-top: 5px solid #3498db; 
+      border-radius: 50%; 
+      animation: spin 1s linear infinite; 
+      margin-bottom: 20px; 
+    }
+    
+    @keyframes spin { 
+      0% { transform: rotate(0deg); } 
+      100% { transform: rotate(360deg); } 
+    }
+    
+    .error { 
+      color: #c00; 
+      background: #fee; 
+      padding: 30px; 
+      border-radius: 12px; 
+      max-width: 700px; 
+      border: 2px solid #fcc; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .error h2 { margin-bottom: 15px; font-size: 24px; }
+    
+    .error-details { 
+      margin-top: 20px; 
+      font-size: 13px; 
+      text-align: right; 
+      line-height: 2; 
+      background: #fff; 
+      padding: 20px; 
+      border-radius: 8px; 
+      border: 1px solid #eee;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .error-code {
+      font-family: 'Courier New', monospace;
+      background: #f8f8f8;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 15px;
+      font-size: 11px;
+      text-align: left;
+      direction: ltr;
+      border: 1px solid #ddd;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
   </style>
 </head>
 <body>
   <div id="root">
     <div class="status-screen">
       <div class="spinner"></div>
-      <div style="font-size: 18px; color: #666; margin-bottom: 10px;">⏳ جاري تحميل النظام...</div>
+      <div style="font-size: 18px; color: #666; margin-bottom: 10px; font-weight: 600;">⏳ جاري تحميل النظام...</div>
       <div style="font-size: 14px; color: #999;">Loading HR System...</div>
-      <div style="font-size: 12px; color: #bbb; margin-top: 15px;">يتطلب اتصال بالإنترنت • Requires Internet Connection</div>
+      <div style="font-size: 12px; color: #bbb; margin-top: 15px;">يتطلب اتصال بالإنترنت • Requires Internet</div>
     </div>
   </div>
 
-  <!-- Try loading from multiple CDNs -->
   <script>
-    var loadedScripts = 0;
-    var requiredScripts = 3;
-    
-    function checkAllLoaded() {
-      loadedScripts++;
-      if (loadedScripts === requiredScripts) {
-        console.log('✅ All libraries loaded successfully');
-        setTimeout(checkReady, 500);
-      }
-    }
-    
-    function checkReady() {
-      if (typeof React === 'undefined' || typeof ReactDOM === 'undefined' || typeof Babel === 'undefined') {
-        showError('فشل في تحميل المكتبات الأساسية', 
-          'لا يمكن تحميل React أو ReactDOM من الإنترنت.<br><br>' +
-          '<strong>الحلول:</strong><br>' +
-          '1. تأكد من اتصال الإنترنت<br>' +
-          '2. عطّل AdBlock مؤقتاً<br>' +
-          '3. جرب متصفح آخر (Chrome/Edge)<br>' +
-          '4. استخدم VPN إذا كانت CDNs محظورة<br>' +
-          '5. جرب الرابط من Netlify بدلاً من GitHub Pages');
-      }
-    }
-    
-    function showError(title, message) {
-      document.getElementById('root').innerHTML = 
-        '<div class="status-screen">' +
-        '<div class="error">' +
-        '<h2>❌ ' + title + '</h2>' +
-        '<p>' + message + '</p>' +
-        '<div class="error-details">' +
-        '<strong>معلومات تقنية:</strong><br>' +
-        'React: ' + (typeof React !== 'undefined' ? '✅' : '❌') + '<br>' +
-        'ReactDOM: ' + (typeof ReactDOM !== 'undefined' ? '✅' : '❌') + '<br>' +
-        'Babel: ' + (typeof Babel !== 'undefined' ? '✅' : '❌') + '<br>' +
-        'Browser: ' + navigator.userAgent.split(')')[0].split('(')[1] + '<br><br>' +
-        '<strong>للمساعدة:</strong> راجع ملف LOADING-FIX.md' +
-        '</div>' +
-        '</div>' +
-        '</div>';
-    }
-    
+    // Global error handler with detailed reporting
     window.onerror = function(msg, url, line, col, error) {
-      console.error('JavaScript Error:', msg, 'at', line + ':' + col);
-      showError('حدث خطأ في تشغيل النظام', 
-        'رسالة الخطأ: ' + msg + '<br>' +
-        'السطر: ' + line + ', العمود: ' + col + '<br><br>' +
-        'الحل: افتح Console (F12) لمزيد من التفاصيل');
+      console.error('Global Error:', {msg, url, line, col, error});
+      
+      var errorHTML = '<div class="status-screen"><div class="error">' +
+        '<h2>❌ حدث خطأ في تشغيل النظام</h2>' +
+        '<p style="margin: 15px 0;">Error occurred while running the system</p>' +
+        '<div class="error-details">' +
+        '<strong>📋 معلومات الخطأ:</strong><br><br>' +
+        '<strong>الرسالة:</strong> ' + msg + '<br>' +
+        '<strong>الملف:</strong> ' + (url || 'inline script') + '<br>' +
+        '<strong>السطر:</strong> ' + line + ', <strong>العمود:</strong> ' + col + '<br><br>';
+      
+      if (error && error.stack) {
+        errorHTML += '<div class="error-code"><strong>Stack Trace:</strong><br>' + 
+          error.stack.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>';
+      }
+      
+      errorHTML += '<br><strong>🔧 الحلول المقترحة:</strong><br>' +
+        '1. امسح الكاش تماماً: Ctrl+Shift+Delete<br>' +
+        '2. جرب متصفح آخر (Chrome موصى به)<br>' +
+        '3. تأكد من تحديث المتصفح لآخر إصدار<br>' +
+        '4. عطّل جميع الإضافات مؤقتاً<br>' +
+        '5. جرب وضع Incognito/Private<br>' +
+        '6. استخدم Netlify بدلاً من GitHub Pages<br><br>' +
+        '<strong>💡 نصيحة:</strong> إذا استمرت المشكلة، استخدم:<br>' +
+        '<a href="https://app.netlify.com/drop" target="_blank" style="color: #3498db;">Netlify Drop</a> ' +
+        '(اسحب الملف وسيعمل فوراً)' +
+        '</div></div></div>';
+      
+      document.getElementById('root').innerHTML = errorHTML;
       return true;
     };
+    
+    // Check libraries loaded
+    var checkInterval = setInterval(function() {
+      if (typeof React !== 'undefined' && typeof ReactDOM !== 'undefined' && typeof Babel !== 'undefined') {
+        clearInterval(checkInterval);
+        console.log('✅ All libraries loaded');
+      }
+    }, 100);
     
     // Timeout fallback
     setTimeout(function() {
       if (document.getElementById('root').innerHTML.indexOf('spinner') !== -1) {
-        showError('انتهت مهلة التحميل', 
-          'استغرق التحميل وقتاً طويلاً.<br><br>' +
-          'الأسباب المحتملة:<br>' +
-          '• اتصال إنترنت بطيء<br>' +
-          '• CDNs محظورة أو بطيئة<br>' +
-          '• مشكلة في المتصفح<br><br>' +
-          'جرب: إعادة تحميل الصفحة (Ctrl+Shift+R)');
+        document.getElementById('root').innerHTML = 
+          '<div class="status-screen"><div class="error">' +
+          '<h2>⏰ انتهت مهلة التحميل</h2>' +
+          '<p>استغرق التحميل وقتاً طويلاً (أكثر من 20 ثانية)</p>' +
+          '<div class="error-details">' +
+          '<strong>الأسباب المحتملة:</strong><br>' +
+          '• اتصال إنترنت بطيء جداً<br>' +
+          '• CDN محظور في شبكتك<br>' +
+          '• Firewall يمنع تحميل JavaScript<br>' +
+          '• المتصفح قديم أو غير مدعوم<br><br>' +
+          '<strong>الحلول:</strong><br>' +
+          '1. جرب شبكة أخرى (Wi-Fi مختلف)<br>' +
+          '2. استخدم VPN<br>' +
+          '3. جرب متصفح آخر<br>' +
+          '4. استخدم <a href="https://app.netlify.com/drop" target="_blank">Netlify</a> بدلاً<br>' +
+          '<br><strong>React:</strong> ' + (typeof React !== 'undefined' ? '✅' : '❌') + 
+          '<br><strong>ReactDOM:</strong> ' + (typeof ReactDOM !== 'undefined' ? '✅' : '❌') +
+          '<br><strong>Babel:</strong> ' + (typeof Babel !== 'undefined' ? '✅' : '❌') +
+          '</div></div></div>';
       }
-    }, 15000);
+    }, 20000);
   </script>
 
-  <!-- Load React from cdnjs (more reliable) -->
-  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" onload="checkAllLoaded()" onerror="showError('فشل تحميل React', 'لا يمكن تحميل React من cdnjs.cloudflare.com')"></script>
-  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" onload="checkAllLoaded()" onerror="showError('فشل تحميل ReactDOM', 'لا يمكن تحميل ReactDOM من cdnjs.cloudflare.com')"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js" onload="checkAllLoaded()" onerror="showError('فشل تحميل Babel', 'لا يمكن تحميل Babel من cdnjs.cloudflare.com')"></script>
+  <!-- Load from CDN with fallback -->
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 
   <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
-    
-    import { useState, useEffect, useRef } from "react";
+    try {
+      const { useState, useEffect, useRef } = React;
+      
+import { useState, useEffect, useRef } from "react";
 
 // ─── Industries ────────────────────────────────────────────────────────────
 const INDUSTRIES = [
@@ -113,6 +179,38 @@ const INDUSTRIES = [
   { id: "retail",       label: "تجزئة / مطاعم",       labelEn: "Retail / F&B",        icon: "🛒", color: "#E63946" },
   { id: "tech",         label: "تقنية / برمجة",       labelEn: "Tech / Software",     icon: "💻", color: "#457B9D" },
 ];
+
+
+// Storage adapter for localStorage
+const storage = {
+  async get(key) {
+    try {
+      const value = localStorage.getItem(key);
+      return value ? { key, value } : null;
+    } catch (e) {
+      console.error('Storage get error:', e);
+      return null;
+    }
+  },
+  async set(key, value) {
+    try {
+      localStorage.setItem(key, value);
+      return { key, value };
+    } catch (e) {
+      console.error('Storage set error:', e);
+      return null;
+    }
+  },
+  async delete(key) {
+    try {
+      localStorage.removeItem(key);
+      return { key, deleted: true };
+    } catch (e) {
+      console.error('Storage delete error:', e);
+      return null;
+    }
+  }
+};
 
 const DEFAULT_COMPANY = {
   name: "شركة كير فور يو المحدودة",
@@ -1208,14 +1306,14 @@ export default function HRSystem() {
 
   useEffect(()=>{
     (async()=>{
-      try { const r=await window.storage.get("company-settings"); if(r){const p=JSON.parse(r.value);setCompany(p);setLocalCompany(p);} } catch{}
+      try { const r=await storage.get("company-settings"); if(r){const p=JSON.parse(r.value);setCompany(p);setLocalCompany(p);} } catch{}
       setLoading(false);
     })();
   },[]);
   useEffect(()=>{ if(page==="setup") setLocalCompany({...company}); },[page]);
 
   const saveCompany = async (d) => {
-    setCompany(d); try{await window.storage.set("company-settings",JSON.stringify(d));}catch{}
+    setCompany(d); try{await storage.set("company-settings",JSON.stringify(d));}catch{}
     setSaved(true); setTimeout(()=>setSaved(false),2500); setPage("dashboard");
   };
   const handleLogoUpload = (e) => {
@@ -1300,26 +1398,34 @@ export default function HRSystem() {
   );
 }
 
-    
-    // Render with error handling
-    try {
+      
+      // Render with error boundary
       const root = ReactDOM.createRoot(document.getElementById('root'));
       root.render(<HRSystem />);
+      
       console.log('✅ HR System rendered successfully');
+      
     } catch (err) {
-      console.error('Render error:', err);
+      console.error('Critical Render Error:', err);
+      
       document.getElementById('root').innerHTML = 
-        '<div class="status-screen">' +
-        '<div class="error">' +
-        '<h2>❌ خطأ في عرض النظام</h2>' +
-        '<p>حدث خطأ أثناء تشغيل التطبيق</p>' +
+        '<div class="status-screen"><div class="error">' +
+        '<h2>❌ خطأ حرج في عرض النظام</h2>' +
+        '<p>Critical error while rendering the application</p>' +
         '<div class="error-details">' +
-        '<strong>رسالة الخطأ:</strong><br>' +
-        err.toString() + '<br><br>' +
-        err.stack +
-        '</div>' +
-        '</div>' +
-        '</div>';
+        '<strong>رسالة الخطأ:</strong><br>' + err.toString() + '<br><br>' +
+        '<strong>نوع الخطأ:</strong> ' + err.name + '<br><br>' +
+        '<div class="error-code">' + (err.stack || 'No stack trace available') + '</div>' +
+        '<br><strong>🔧 ماذا أفعل؟</strong><br>' +
+        '1. تأكد من أن المتصفح حديث (Chrome 90+)<br>' +
+        '2. عطّل جميع إضافات المتصفح<br>' +
+        '3. امسح الكاش كلياً<br>' +
+        '4. جرب وضع Incognito<br>' +
+        '5. استخدم Netlify بدلاً من GitHub Pages<br><br>' +
+        '<strong>💡 للحل الفوري:</strong> استخدم ' +
+        '<a href="https://app.netlify.com/drop" target="_blank" style="color: #3498db; font-weight: bold;">Netlify</a> ' +
+        'وسيعمل بدون مشاكل!' +
+        '</div></div></div>';
     }
   </script>
 </body>
