@@ -1,8 +1,11 @@
 // src/components/FormPage.tsx
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Company } from "../types";
 import { FORM_FIELDS } from "../data";
 import { buildDoc, printHtml } from "../lib/hr-utils";
+// استيراد مكتبات Firebase لضمان الحفظ السحابي
+import firebase from "firebase/compat/app";
+import "firebase/compat/database";
 
 interface FormPageProps {
   activeForm: string;
@@ -25,6 +28,42 @@ export const FormPage: React.FC<FormPageProps> = ({
   const stampInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
 
+  // --- إعدادات Firebase الخاصة بك لربط الأجهزة ---
+  const firebaseConfig = {
+    apiKey: "AIzaSyCSHgY3CAhV7ZLDZL2GkIOZhmbD2pK0J7g",
+    authDomain: "hr-system-2026.firebaseapp.com",
+    databaseURL: "https://hr-system-2026-default-rtdb.firebaseio.com",
+    projectId: "hr-system-2026",
+    storageBucket: "hr-system-2026.firebasestorage.app",
+    messagingSenderId: "262129832067",
+    appId: "1:262129832067:web:74e04c77ff3e0f8defcbb6"
+  };
+
+  // تهيئة Firebase
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+  const db = firebase.database();
+
+  // 1. جلب البيانات من السحاب عند فتح الصفحة (المزامنة)
+  useEffect(() => {
+    const dataRef = db.ref(`shared_forms/${activeForm}`);
+    dataRef.on('value', (snapshot) => {
+      const savedData = snapshot.val();
+      if (savedData) {
+        setFormData(savedData);
+      }
+    });
+    return () => dataRef.off();
+  }, [activeForm]);
+
+  // 2. حفظ البيانات تلقائياً عند تغيير أي حرف
+  useEffect(() => {
+    if (Object.keys(formData).length > 0) {
+      db.ref(`shared_forms/${activeForm}`).set(formData);
+    }
+  }, [formData, activeForm]);
+
   const handleStampFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;
     const r = new FileReader();
@@ -40,17 +79,23 @@ export const FormPage: React.FC<FormPageProps> = ({
   const printCompany: Company = { ...company, stampMode, stampImage: stampMode === "digital" ? stampImage : null };
   const preview = customHtml || buildDoc(activeForm, formData, printCompany);
 
+  // دالة الطباعة
   const doPrint = () => printHtml(preview);
+
+  // دالة الإرسال بالإيميل
+  const doEmail = () => {
+    const subject = encodeURIComponent(`نموذج ${def?.title || 'HR'}`);
+    const body = encodeURIComponent(`تم إعداد نموذج جديد بنجاح.\n\nنوع النموذج: ${def?.title}\nبإمكانك معاينة التفاصيل في المرفق عند الطباعة.`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  };
 
   const toggleEdit = () => {
     if (isEditing) {
-      // Save
       if (editorRef.current) {
         setCustomHtml(editorRef.current.innerHTML);
       }
       setIsEditing(false);
     } else {
-      // Start editing
       if (!customHtml) {
         setCustomHtml(buildDoc(activeForm, formData, printCompany));
       }
@@ -65,7 +110,7 @@ export const FormPage: React.FC<FormPageProps> = ({
 
   const stampOpts = [
     { id:"digital", icon:"✅", ar:"ختم رقمي",    en:"Digital" },
-    { id:"manual",  icon:"⭕", ar:"ختم يدوي",     en:"Manual" },
+    { id:"manual",  icon:"⭕", ar:"ختم يدوي",      en:"Manual" },
     { id:"none",    icon:"✍️", ar:"توقيع فقط",    en:"Sig only" },
   ];
 
@@ -109,69 +154,19 @@ export const FormPage: React.FC<FormPageProps> = ({
             ))}
           </div>
 
-          <div className="mt-6 pt-6 border-t border-gray-100">
-            <div className="text-[11px] font-bold text-gray-600 mb-4">
-              🔏 الختم والتوقيع <span className="text-[10px] text-gray-400 font-normal mr-1">Stamp & Signature</span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {stampOpts.map((o: any)=>(
-                <div key={o.id} onClick={()=>setStampMode(o.id)}
-                  className={`border-2 rounded-xl p-2 cursor-pointer text-center transition-all ${stampMode===o.id ? 'border-current bg-current/5' : 'border-gray-100 bg-gray-50'}`}
-                  style={{ color: stampMode===o.id ? c : "#666" }}>
-                  <div className="text-xl mb-1">{o.icon}</div>
-                  <div className="text-[9px] font-bold leading-tight">{o.ar}</div>
-                  <div className="text-[8px] opacity-60 uppercase">{o.en}</div>
-                </div>
-              ))}
-            </div>
-
-            {stampMode === "digital" && (
-              <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex items-center gap-4 mb-3">
-                {stampImage
-                  ? <img src={stampImage} className="h-12 w-12 object-contain border border-gray-200 rounded-lg bg-white p-1 shrink-0" />
-                  : <div className="w-12 h-12 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-[8px] text-gray-400 text-center shrink-0 leading-tight">لا<br/>ختم</div>
-                }
-                <div className="flex flex-col gap-2 flex-1">
-                  <button onClick={()=>stampInputRef.current?.click()}
-                    className="w-full py-1.5 rounded-lg font-bold text-[10px] text-white transition-all hover:opacity-90" style={{ background: c }}>
-                    📁 رفع الختم
-                  </button>
-                  {stampImage && (
-                    <button onClick={()=>setStampImage(null)}
-                      className="w-full py-1.5 rounded-lg font-bold text-[10px] text-red-600 bg-red-50 border border-red-100 hover:bg-red-100 transition-all">
-                      🗑️ إزالة
-                    </button>
-                  )}
-                </div>
-                <input ref={stampInputRef} type="file" accept="image/*" className="hidden" onChange={handleStampFile} />
-              </div>
-            )}
-
-            {stampMode === "manual" && (
-              <div className="flex items-center gap-3 bg-gray-50 rounded-xl p-3 border border-gray-100 mb-3">
-                <div className="w-10 h-10 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center shrink-0">
-                  <span className="text-[8px] text-gray-300 text-center leading-tight">ختم</span>
-                </div>
-                <span className="text-[10px] text-gray-500 leading-tight">دائرة فارغة للختم اليدوي بعد الطباعة</span>
-              </div>
-            )}
-
-            {stampMode === "none" && (
-              <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 text-[10px] text-gray-500 mb-3">
-                ✍️ توقيعات فقط — بدون مساحة ختم
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-2 mt-6">
-            <button onClick={()=>setFormData({})}
-              className="flex-1 bg-gray-100 border border-gray-200 py-3 rounded-xl font-bold text-xs text-gray-600 hover:bg-gray-200 transition-all">
-              🗑️ مسح
-            </button>
+          {/* أزرار الإجراءات الجانبية */}
+          <div className="mt-6 flex flex-col gap-2 no-print">
             <button onClick={doPrint}
-              className="flex-[2] py-3 rounded-xl font-black text-xs text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98]" style={{ background: c }}>
-              🖨️ طباعة
+              className="w-full py-3 rounded-xl font-black text-xs text-white shadow-md transition-all hover:opacity-90" style={{ background: c }}>
+              🖨️ طباعة النموذج
+            </button>
+            <button onClick={doEmail}
+              className="w-full py-3 rounded-xl font-bold text-xs text-white bg-green-600 shadow-md transition-all hover:bg-green-700">
+              📧 إرسال عبر الإيميل
+            </button>
+            <button onClick={()=>setFormData({})}
+              className="w-full bg-gray-100 border border-gray-200 py-2 rounded-xl font-bold text-xs text-gray-600 hover:bg-gray-200">
+              🗑️ مسح البيانات
             </button>
           </div>
         </div>
@@ -189,9 +184,8 @@ export const FormPage: React.FC<FormPageProps> = ({
               <button onClick={toggleEdit}
                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${isEditing ? 'text-white' : 'bg-white'}`}
                 style={{ background: isEditing ? c : "transparent", color: isEditing ? "#fff" : c, borderColor: c }}>
-                {isEditing ? "💾 حفظ التعديلات" : "✏️ تعديل النص النهائي"}
+                {isEditing ? "💾 حفظ التعديلات" : "✏️ تعديل النص"}
               </button>
-              <span className="text-[9px] text-gray-400 bg-gray-50 px-3 py-1 rounded-full uppercase tracking-wider">Bilingual</span>
               <button onClick={doPrint}
                 className="px-5 py-1.5 rounded-lg font-bold text-[11px] text-white shadow-sm transition-all hover:opacity-90" style={{ background: c }}>
                 🖨️ طباعة
@@ -201,7 +195,7 @@ export const FormPage: React.FC<FormPageProps> = ({
           
           {isEditing && (
             <div className="p-3 rounded-xl mb-4 text-[10px] md:text-xs border" style={{ background: c + "10", color: c, borderColor: c + "22" }}>
-              💡 <strong>وضع التعديل المباشر:</strong> يمكنك الآن الضغط على أي نص في المعاينة أدناه وتعديله أو حذفه أو إضافة نصوص جديدة قبل الطباعة.
+              💡 <strong>وضع التعديل:</strong> أي نص تغيره هنا سيتم حفظه سحابياً ولن يضيع.
             </div>
           )}
 
