@@ -37,7 +37,7 @@ export const EOSBCalculator: React.FC<EOSBCalculatorProps> = ({ company, onBack 
     }
 
     const diffTime = Math.abs(end.getTime() - start.getTime());
-    const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const totalDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
     
     const years = Math.floor(totalDays / 365);
     const months = Math.floor((totalDays % 365) / 30);

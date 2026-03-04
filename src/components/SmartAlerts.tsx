@@ -13,6 +13,9 @@ interface SmartAlertsProps {
   onBack: () => void;
 }
 
+import { auth, db } from "../lib/firebase";
+import { collection, doc, onSnapshot, setDoc, deleteDoc, query, where } from "firebase/firestore";
+
 export const SmartAlerts: React.FC<SmartAlertsProps> = ({ company, onBack }) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [newName, setNewName] = useState("");
@@ -24,38 +27,51 @@ export const SmartAlerts: React.FC<SmartAlertsProps> = ({ company, onBack }) => 
   const today = new Date("2026-03-02"); // Using the provided current time
 
   useEffect(() => {
-    const saved = localStorage.getItem("hr-docs-alerts");
-    if (saved) {
-      try {
-        setDocuments(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to load documents", e);
-      }
-    }
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const q = query(collection(db, "alerts"), where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Document));
+      setDocuments(docs);
+      // Also update localStorage for the badge count in App.tsx
+      localStorage.setItem("hr-docs-alerts", JSON.stringify(docs));
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const saveDocs = (docs: Document[]) => {
-    setDocuments(docs);
-    localStorage.setItem("hr-docs-alerts", JSON.stringify(docs));
-  };
-
-  const addDocument = () => {
+  const addDocument = async () => {
     if (!newName || !newDate) return;
-    const newDoc: Document = {
-      id: Math.random().toString(36).substr(2, 9),
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const id = Math.random().toString(36).substr(2, 9);
+    const newDoc: any = {
+      id,
       name: newName,
       type: newType,
       expiryDate: newDate,
-      note: newNote
+      note: newNote,
+      userId: user.uid
     };
-    saveDocs([...documents, newDoc]);
-    setNewName("");
-    setNewDate("");
-    setNewNote("");
+    
+    try {
+      await setDoc(doc(db, "alerts", id), newDoc);
+      setNewName("");
+      setNewDate("");
+      setNewNote("");
+    } catch (e) {
+      console.error("Error adding document", e);
+    }
   };
 
-  const deleteDocument = (id: string) => {
-    saveDocs(documents.filter(d => d.id !== id));
+  const deleteDocument = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "alerts", id));
+    } catch (e) {
+      console.error("Error deleting document", e);
+    }
   };
 
   const getAlerts = () => {

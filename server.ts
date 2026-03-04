@@ -1,28 +1,24 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
+import admin from "firebase-admin";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const db = new Database("nexus.db");
 
-// Initialize database
-db.exec(`
-  CREATE TABLE IF NOT EXISTS chats (
-    id TEXT PRIMARY KEY,
-    title TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-  CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    chat_id TEXT,
-    role TEXT,
-    content TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(chat_id) REFERENCES chats(id)
-  );
-`);
+// Initialize Firebase Admin
+if (process.env.VITE_FIREBASE_PROJECT_ID) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    }),
+  });
+}
 
 async function startServer() {
   const app = express();
@@ -31,32 +27,50 @@ async function startServer() {
   app.use(express.json());
 
   // API Routes
-  app.get("/api/chats", (req, res) => {
-    const chats = db.prepare("SELECT * FROM chats ORDER BY created_at DESC").all();
-    res.json(chats);
+  app.post("/api/admin/create-user", async (req, res) => {
+    const { email, password, username, role, companyData } = req.body;
+    
+    try {
+      const userRecord = await admin.auth().createUser({
+        email,
+        password,
+        displayName: username,
+      });
+
+      // User created in Auth, now SuperAdminDashboard will handle Firestore part
+      // or we can do it here
+      const db = admin.firestore();
+      await db.collection("users").doc(userRecord.uid).set({
+        id: userRecord.uid,
+        username,
+        role,
+        companyId: userRecord.uid, // Use UID as company ID for simplicity
+        email
+      });
+
+      if (companyData) {
+        await db.collection("companies").doc(userRecord.uid).set(companyData);
+      }
+
+      res.json({ success: true, uid: userRecord.uid });
+    } catch (error: any) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
-  app.post("/api/chats", (req, res) => {
-    const { id, title } = req.body;
-    db.prepare("INSERT INTO chats (id, title) VALUES (?, ?)").run(id, title);
-    res.json({ success: true });
-  });
-
-  app.get("/api/chats/:id/messages", (req, res) => {
-    const messages = db.prepare("SELECT * FROM messages WHERE chat_id = ? ORDER BY created_at ASC").all(req.params.id);
-    res.json(messages);
-  });
-
-  app.post("/api/messages", (req, res) => {
-    const { chat_id, role, content } = req.body;
-    db.prepare("INSERT INTO messages (chat_id, role, content) VALUES (?, ?, ?)").run(chat_id, role, content);
-    res.json({ success: true });
-  });
-
-  app.delete("/api/chats/:id", (req, res) => {
-    db.prepare("DELETE FROM messages WHERE chat_id = ?").run(req.params.id);
-    db.prepare("DELETE FROM chats WHERE chat_id = ?").run(req.params.id);
-    res.json({ success: true });
+  app.delete("/api/admin/delete-user/:uid", async (req, res) => {
+    const { uid } = req.params;
+    try {
+      await admin.auth().deleteUser(uid);
+      const db = admin.firestore();
+      await db.collection("users").doc(uid).delete();
+      await db.collection("companies").doc(uid).delete();
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // Vite middleware for development

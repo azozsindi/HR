@@ -1,6 +1,6 @@
 // src/components/SetupPage.tsx
-import React from "react";
-import { Company, Industry } from "../types";
+import React, { useState } from "react";
+import { Company, Industry, Employee } from "../types";
 import { INDUSTRIES } from "../data";
 
 interface SetupPageProps {
@@ -13,13 +13,59 @@ interface SetupPageProps {
   stampFileRef: React.RefObject<HTMLInputElement>;
   handleLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleStampUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onUpdatePassword: (p: string) => void;
 }
 
 export const SetupPage: React.FC<SetupPageProps> = ({ 
   localCompany, setLocalCompany, saved, onSave, onBack, 
-  fileRef, stampFileRef, handleLogoUpload, handleStampUpload 
+  fileRef, stampFileRef, handleLogoUpload, handleStampUpload,
+  onUpdatePassword
 }) => {
   const c = localCompany.primaryColor;
+  const [newPass, setNewPass] = useState("");
+  const [showEmpForm, setShowEmpForm] = useState(false);
+  const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
+  const [empData, setEmpData] = useState<Partial<Employee>>({});
+
+  const handleAddEmployee = () => {
+    if (!empData.name) return;
+    const newEmp: Employee = {
+      id: editingEmp?.id || Date.now().toString(),
+      name: empData.name || "",
+      idNumber: empData.idNumber || "",
+      jobTitle: empData.jobTitle || "",
+      department: empData.department || "",
+      salary: Number(empData.salary || 0),
+      hireDate: empData.hireDate || "",
+      nationality: empData.nationality || "",
+    };
+
+    setLocalCompany(prev => {
+      const employees = prev.employees || [];
+      if (editingEmp) {
+        return { ...prev, employees: employees.map(e => e.id === editingEmp.id ? newEmp : e) };
+      }
+      return { ...prev, employees: [...employees, newEmp] };
+    });
+
+    setShowEmpForm(false);
+    setEditingEmp(null);
+    setEmpData({});
+  };
+
+  const deleteEmployee = (id: string) => {
+    setLocalCompany(prev => ({
+      ...prev,
+      employees: (prev.employees || []).filter(e => e.id !== id)
+    }));
+  };
+
+  const editEmployee = (emp: Employee) => {
+    setEditingEmp(emp);
+    setEmpData(emp);
+    setShowEmpForm(true);
+  };
+
   return (
     <div className="min-h-screen bg-[#f5f5f7] font-sans antialiased pb-10" style={{ direction: "rtl" }}>
       <header className="sticky top-0 z-50 px-4 md:px-7 py-4 flex items-center gap-4 shadow-md text-white" style={{ background: c }}>
@@ -28,6 +74,116 @@ export const SetupPage: React.FC<SetupPageProps> = ({
       </header>
 
       <div className="max-w-3xl mx-auto px-4 mt-6 md:mt-8">
+        {/* Employee Management Section */}
+        <div className="bg-white rounded-2xl p-6 mb-5 shadow-sm">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="m-0 text-sm md:text-base text-gray-800 font-bold flex items-center gap-2">
+              <span>👥</span> إدارة الموظفين
+              <span className="text-[10px] md:text-xs text-gray-400 font-normal">(اختياري)</span>
+            </h3>
+            <button 
+              onClick={() => { setShowEmpForm(true); setEditingEmp(null); setEmpData({}); }}
+              className="px-3 py-1.5 rounded-lg font-bold text-[10px] text-white transition-all hover:opacity-90"
+              style={{ background: c }}
+            >
+              + إضافة موظف
+            </button>
+          </div>
+
+          {showEmpForm && (
+            <div className="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-100">
+              <h4 className="text-xs font-bold mb-3 text-gray-700">{editingEmp ? "تعديل بيانات موظف" : "إضافة موظف جديد"}</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block mb-1 text-[10px] font-bold text-gray-500">اسم الموظف</label>
+                  <input value={empData.name || ""} onChange={e => setEmpData(p => ({ ...p, name: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block mb-1 text-[10px] font-bold text-gray-500">رقم الهوية / الإقامة</label>
+                  <input value={empData.idNumber || ""} onChange={e => setEmpData(p => ({ ...p, idNumber: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block mb-1 text-[10px] font-bold text-gray-500">المسمى الوظيفي</label>
+                  <input value={empData.jobTitle || ""} onChange={e => setEmpData(p => ({ ...p, jobTitle: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block mb-1 text-[10px] font-bold text-gray-500">القسم</label>
+                  <input value={empData.department || ""} onChange={e => setEmpData(p => ({ ...p, department: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block mb-1 text-[10px] font-bold text-gray-500">الراتب الإجمالي</label>
+                  <input type="number" value={empData.salary || ""} onChange={e => setEmpData(p => ({ ...p, salary: Number(e.target.value) }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block mb-1 text-[10px] font-bold text-gray-500">تاريخ الالتحاق</label>
+                  <input type="date" value={empData.hireDate || ""} onChange={e => setEmpData(p => ({ ...p, hireDate: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block mb-1 text-[10px] font-bold text-gray-500">الجنسية</label>
+                  <input value={empData.nationality || ""} onChange={e => setEmpData(p => ({ ...p, nationality: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:outline-none" />
+                </div>
+              </div>
+              <div className="flex gap-2 mt-4">
+                <button onClick={handleAddEmployee} className="flex-1 py-2 rounded-lg font-bold text-xs text-white" style={{ background: c }}>
+                  {editingEmp ? "حفظ التعديلات" : "إضافة"}
+                </button>
+                <button onClick={() => setShowEmpForm(false)} className="flex-1 py-2 rounded-lg font-bold text-xs text-gray-600 bg-gray-200">إلغاء</button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+            {localCompany.employees && localCompany.employees.length > 0 ? (
+              localCompany.employees.map(emp => (
+                <div key={emp.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl hover:bg-gray-50 transition-all">
+                  <div>
+                    <div className="text-xs font-bold text-gray-800">{emp.name}</div>
+                    <div className="text-[10px] text-gray-400">{emp.jobTitle} | {emp.department}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => editEmployee(emp)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all">✏️</button>
+                    <button onClick={() => deleteEmployee(emp.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all">🗑️</button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-6 text-gray-400 text-xs">لا يوجد موظفين مضافين حالياً</div>
+            )}
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl p-6 mb-5 shadow-sm">
+          <h3 className="m-0 mb-4 text-sm md:text-base text-gray-800 font-bold flex items-center gap-2">
+            <span>🔑</span> أمان الحساب
+          </h3>
+          <div className="flex flex-col sm:flex-row gap-4 items-end">
+            <div className="flex-1">
+              <label className="block mb-1.5 text-xs font-bold text-gray-600">تغيير كلمة المرور</label>
+              <input 
+                type="password" 
+                value={newPass} 
+                onChange={e => setNewPass(e.target.value)}
+                placeholder="كلمة المرور الجديدة"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:outline-none transition-all"
+                style={{ "--tw-ring-color": c + "44" } as any} 
+              />
+            </div>
+            <button 
+              onClick={() => { if(newPass) { onUpdatePassword(newPass); setNewPass(""); } }}
+              className="px-6 py-2 rounded-lg font-bold text-xs text-white transition-all hover:opacity-90" 
+              style={{ background: c }}
+            >
+              تحديث كلمة المرور
+            </button>
+          </div>
+        </div>
+
         <div className="bg-white rounded-2xl p-6 mb-5 shadow-sm">
           <h3 className="m-0 mb-4 text-sm md:text-base text-gray-800 font-bold flex items-center gap-2">
             <span>🏢</span> مجال الشركة 

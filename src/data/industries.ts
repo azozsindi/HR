@@ -12,17 +12,17 @@ export const INDUSTRIES: Industry[] = [
 ];
 
 export const DEFAULT_COMPANY: Company = {
-  name: "شركة كير فور يو المحدودة",
-  nameEn: "Care4u KSA Limited",
+  name: "اسم المنشأة",
+  nameEn: "Company Name",
   logo: null,
   primaryColor: "#7B2FBE",
   industry: "general",
-  address: "طريق الكورنيش الفرعي، الشاطئ، جدة 23511",
-  addressEn: "Corniche Road, Al-Shati, Jeddah 23511",
-  phone: "+966530785500",
-  email: "info@care4uksa.com",
-  website: "www.care4uksa.com",
-  tagline: "FOR ALL YOUR SUPPORT NEEDS",
+  address: "المملكة العربية السعودية",
+  addressEn: "Saudi Arabia",
+  phone: "+966",
+  email: "hr@company.com",
+  website: "www.company.com",
+  tagline: "نظام الموارد البشرية الذكي",
   stampMode: "manual",
   stampImage: null,
 };

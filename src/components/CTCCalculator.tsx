@@ -28,10 +28,11 @@ export const CTCCalculator: React.FC<CTCCalculatorProps> = ({ company, onBack })
     const gross = basic + housing + transport + otherAllowances;
     
     // GOSI Calculation (Company Share)
-    // Saudi: 12.25% (9% Pension + 2% UI + 0.75% Risk + 0.5% Security) - simplified for 2026
-    // Non-Saudi: 2% (Risk)
-    const gosiBase = Math.min(gross, 45000);
-    const gosiRate = isSaudi ? 0.1225 : 0.02;
+    // GOSI is calculated on Basic + Housing only
+    const gosiBase = Math.min(basic + housing, 45000);
+    // Saudi: 11.75% (9% Pension + 2% Occupational Hazards + 0.75% Saned)
+    // Non-Saudi: 2% (Occupational Hazards)
+    const gosiRate = isSaudi ? 0.1175 : 0.02;
     const gosiCompany = gosiBase * gosiRate;
 
     const totalMonthly = gross + gosiCompany + medicalInsurance + govtFees + ticketProvision;

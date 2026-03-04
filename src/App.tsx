@@ -21,10 +21,19 @@ import { NitaqatAuditor } from "./components/NitaqatAuditor";
 import { InterviewScorecard } from "./components/InterviewScorecard";
 import { VATCalculator } from "./components/VATCalculator";
 import { SmartAlerts } from "./components/SmartAlerts";
+import { LoginPage } from "./components/LoginPage";
+import { SuperAdminDashboard } from "./components/SuperAdminDashboard";
+import { UserAccount } from "./types";
+
+import { auth, db } from "./lib/firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, getDoc, setDoc, collection, onSnapshot, query, where } from "firebase/firestore";
 
 export default function HRSystem() {
   const [company, setCompany] = useState<Company>(DEFAULT_COMPANY);
   const [localCompany, setLocalCompany] = useState<Company>(DEFAULT_COMPANY);
+  const [user, setUser] = useState<UserAccount | null>(null);
+  const [accounts, setAccounts] = useState<UserAccount[]>([]);
   const [page, setPage] = useState<"dashboard" | "setup" | "form" | "calculator" | "date" | "salary" | "ctc" | "overtime" | "jd" | "notice" | "leave_tracker" | "nitaqat" | "interview" | "vat" | "alerts">("dashboard");
   const [activeForm, setActiveForm] = useState<string | null>(null);
   const [formData, setFormData] = useState<any>({});
@@ -35,18 +44,99 @@ export default function HRSystem() {
   const stampFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const r = localStorage.getItem("company-settings");
-    if (r) {
-      try {
-        const p = JSON.parse(r);
-        setCompany(p);
-        setLocalCompany(p);
-      } catch (e) {
-        console.error("Failed to parse company settings", e);
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // Fetch user profile from Firestore
+        const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data() as UserAccount;
+          setUser({ ...userData, id: firebaseUser.uid });
+
+          if (userData.role === "company" && userData.companyId) {
+            // Fetch company data
+            const compDoc = await getDoc(doc(db, "companies", userData.companyId));
+            if (compDoc.exists()) {
+              const compData = compDoc.data() as Company;
+              setCompany(compData);
+              setLocalCompany(compData);
+            }
+          }
+        } else {
+          // Handle case where user exists in Auth but not in Firestore (e.g. first time admin)
+          // For now, if it's the superadmin email, we can bootstrap
+          if (firebaseUser.email === "azoos@hr.com") {
+             const adminData: UserAccount = {
+               id: firebaseUser.uid,
+               username: "azoos",
+               password: "", // Not needed for Firebase Auth
+               role: "superadmin",
+               companyData: DEFAULT_COMPANY
+             };
+             await setDoc(doc(db, "users", firebaseUser.uid), adminData);
+             setUser(adminData);
+          }
+        }
+      } else {
+        setUser(null);
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    });
+
+    return () => unsubscribeAuth();
   }, []);
+
+  // Listen for accounts if superadmin
+  useEffect(() => {
+    if (user?.role === "superadmin") {
+      const q = query(collection(db, "users"), where("role", "==", "company"));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const accs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as UserAccount));
+        setAccounts(accs);
+      });
+      return () => unsubscribe();
+    }
+  }, [user]);
+
+  const handleLogin = (account: UserAccount) => {
+    // Firebase login is handled in LoginPage.tsx
+    // This function might be redundant now but kept for compatibility if needed
+    setUser(account);
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    setPage("dashboard");
+  };
+
+  const addAccount = async (acc: UserAccount) => {
+    // This will be handled via a backend call or by the superadmin dashboard
+    // For now, we'll just save the account info to Firestore
+    // Note: This doesn't create the Firebase Auth user yet. 
+    // In a real app, you'd use a Cloud Function or Admin SDK.
+    await setDoc(doc(db, "users", acc.id), acc);
+    if (acc.companyData) {
+      await setDoc(doc(db, "companies", acc.id), acc.companyData);
+    }
+  };
+
+  const deleteAccount = async (id: string) => {
+    // Delete from Firestore (Auth user deletion requires Admin SDK)
+    // await deleteDoc(doc(db, "users", id));
+  };
+
+  const updatePassword = (newPass: string) => {
+    if (!user || user.role !== "company") return;
+    
+    const updatedUser = { ...user, password: newPass };
+    setUser(updatedUser);
+    localStorage.setItem("hr-user-session", JSON.stringify(updatedUser));
+
+    const updatedAccounts = accounts.map(a => a.id === user.id ? updatedUser : a);
+    setAccounts(updatedAccounts);
+    localStorage.setItem("hr-accounts", JSON.stringify(updatedAccounts));
+    
+    alert("تم تغيير كلمة المرور بنجاح");
+  };
 
   useEffect(() => {
     const updateAlertCount = () => {
@@ -76,13 +166,20 @@ export default function HRSystem() {
     if (page === "setup") setLocalCompany({ ...company });
   }, [page, company]);
 
-  const saveCompany = (d: Company) => {
+  const saveCompany = async (d: Company) => {
     setCompany(d);
-    try {
-      localStorage.setItem("company-settings", JSON.stringify(d));
-    } catch (e) {
-      console.error("Failed to save company settings", e);
+    if (user && user.role === "company" && user.companyId) {
+      try {
+        await setDoc(doc(db, "companies", user.companyId), d);
+        
+        const updatedUser = { ...user, companyData: d };
+        setUser(updatedUser);
+        await setDoc(doc(db, "users", user.id), updatedUser);
+      } catch (e) {
+        console.error("Failed to save company settings to Firebase", e);
+      }
     }
+
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
     setPage("dashboard");
@@ -135,6 +232,14 @@ export default function HRSystem() {
     );
   }
 
+  if (!user) {
+    return <LoginPage company={company} accounts={accounts} onLogin={handleLogin} />;
+  }
+
+  if (user.role === "superadmin") {
+    return <SuperAdminDashboard accounts={accounts} onAddAccount={addAccount} onDeleteAccount={deleteAccount} onLogout={handleLogout} />;
+  }
+
   if (page === "setup") {
     return (
       <SetupPage 
@@ -147,6 +252,7 @@ export default function HRSystem() {
         stampFileRef={stampFileRef} 
         handleLogoUpload={handleLogoUpload} 
         handleStampUpload={handleStampUpload} 
+        onUpdatePassword={updatePassword}
       />
     );
   }
@@ -303,6 +409,7 @@ export default function HRSystem() {
             </div>
 
             <button onClick={() => setPage("setup")} className="bg-white text-gray-900 px-4 md:px-5 py-2 md:py-2.5 rounded-xl cursor-pointer text-[11px] md:text-xs font-black uppercase tracking-widest shadow-lg hover:bg-gray-100 transition-all active:scale-95">⚙️ الإعدادات</button>
+            <button onClick={handleLogout} className="bg-red-500/20 border border-red-500/30 text-white px-3 md:px-4 py-2 md:py-2.5 rounded-xl cursor-pointer text-[11px] md:text-xs font-black uppercase tracking-widest hover:bg-red-500/30 transition-all active:scale-95" title="تسجيل الخروج">🚪 خروج</button>
           </div>
         </div>
       </header>

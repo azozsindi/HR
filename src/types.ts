@@ -8,6 +8,17 @@ export interface Industry {
   color: string;
 }
 
+export interface Employee {
+  id: string;
+  name: string;
+  idNumber: string;
+  jobTitle: string;
+  department: string;
+  salary: number;
+  hireDate: string;
+  nationality: string;
+}
+
 export interface Company {
   name: string;
   nameEn: string;
@@ -22,6 +33,7 @@ export interface Company {
   tagline: string;
   stampMode: "manual" | "digital" | "none";
   stampImage: string | null;
+  employees?: Employee[];
 }
 
 export interface Form {
@@ -47,4 +59,13 @@ export interface FormDefinition {
   title: string;
   titleEn: string;
   fields: Field[];
+}
+
+export interface UserAccount {
+  id: string;
+  username: string;
+  password: string;
+  role: "superadmin" | "company";
+  companyData: Company;
+  companyId?: string;
 }

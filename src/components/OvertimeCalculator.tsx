@@ -8,6 +8,7 @@ interface OvertimeCalculatorProps {
 export const OvertimeCalculator: React.FC<OvertimeCalculatorProps> = ({ company, onBack }) => {
   const [salary, setSalary] = useState<number>(6000);
   const [hours, setHours] = useState<number>(10);
+  const [monthlyHours, setMonthlyHours] = useState<176 | 240>(240);
   const [type, setType] = useState<"standard" | "holiday">("standard");
   const [result, setResult] = useState({
     hourlyRate: 0,
@@ -18,11 +19,9 @@ export const OvertimeCalculator: React.FC<OvertimeCalculatorProps> = ({ company,
   const c = company.primaryColor;
 
   useEffect(() => {
-    // Saudi Labor Law: Hourly Rate = Salary / 240 (standard 48h week / 30 days)
-    // Or Salary / 176 (standard 40h week)
-    // Standard practice is 240 hours per month
-    const hourly = salary / 240;
-    const multiplier = type === "standard" ? 1.5 : 2.0; // Standard is 1.5x, Holidays often 2x or 1.5x depending on policy but law says 1.5x of basic + allowances
+    // Saudi Labor Law: Hourly Rate = Salary / Monthly Working Hours
+    const hourly = salary / monthlyHours;
+    const multiplier = type === "standard" ? 1.5 : 1.5; // Law says 1.5x for all OT
     const otRate = hourly * multiplier;
     const total = otRate * hours;
 
@@ -31,7 +30,7 @@ export const OvertimeCalculator: React.FC<OvertimeCalculatorProps> = ({ company,
       overtimeRate: otRate,
       totalAmount: total
     });
-  }, [salary, hours, type]);
+  }, [salary, hours, type, monthlyHours]);
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] p-4 md:p-10" style={{ direction: "rtl" }}>
@@ -49,9 +48,18 @@ export const OvertimeCalculator: React.FC<OvertimeCalculatorProps> = ({ company,
             <input type="number" value={salary} onChange={e => setSalary(Number(e.target.value))} className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:outline-none transition-all text-lg font-bold" style={{ "--tw-ring-color": c + "44" } as any} />
           </div>
 
-          <div className="mb-5">
-            <label className="block text-xs font-bold mb-2 text-gray-700">عدد ساعات العمل الإضافي</label>
-            <input type="number" value={hours} onChange={e => setHours(Number(e.target.value))} className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:outline-none transition-all text-lg font-bold" style={{ "--tw-ring-color": c + "44" } as any} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+            <div>
+              <label className="block text-xs font-bold mb-2 text-gray-700">عدد ساعات العمل الإضافي</label>
+              <input type="number" value={hours} onChange={e => setHours(Number(e.target.value))} className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:outline-none transition-all text-lg font-bold" style={{ "--tw-ring-color": c + "44" } as any} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold mb-2 text-gray-700">ساعات العمل الشهرية (المعيار)</label>
+              <select value={monthlyHours} onChange={e => setMonthlyHours(Number(e.target.value) as any)} className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:outline-none transition-all text-sm font-bold bg-white" style={{ "--tw-ring-color": c + "44" } as any}>
+                <option value={240}>240 ساعة (48 ساعة أسبوعياً)</option>
+                <option value={176}>176 ساعة (40 ساعة أسبوعياً)</option>
+              </select>
+            </div>
           </div>
 
           <div className="mb-8">

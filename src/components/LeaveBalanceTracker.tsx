@@ -21,9 +21,9 @@ export const LeaveBalanceTracker: React.FC<LeaveBalanceTrackerProps> = ({ compan
     const start = new Date(joinDate);
     const now = new Date();
     
-    // Calculate total days of service
+    // Calculate total days of service (including start and end date)
     const diffTime = Math.abs(now.getTime() - start.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
     const years = diffDays / 365.25;
 
     // Saudi Law: 21 days for first 5 years, 30 days after
